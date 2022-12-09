@@ -1,9 +1,13 @@
 package controller
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
+	"strings"
 	"time"
 
 	"log"
@@ -11,6 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"os"
+
+	"net/smtp"
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
@@ -24,10 +30,102 @@ type Mail struct {
 	From    []*mail.Address `json:"from"`
 	To      []*mail.Address `json:"to"`
 	Date    time.Time       `json:"data"`
+	//todo add raw mail data
+}
+
+type CreateMailInfo struct {
+	EmailName string   `form:"emailname" json:"emailname" binding:"required"`
+	From      string   `form:"from" json:"from" binding:"required"`
+	To        []string `form:"to" json:"to" binding:"required"`
+	Cc        []string `form:"cc" json:"cc" binding:"required"`
+	Bcc       []string `form:"bcc" json:"bcc" binding:"required"`
+	Subject   string   `form:"subject" json:"subject" binding:"required"`
+	Text      string   `form:"text" json:"text" binding:"required"`
+	Html      string   `form:"html" json:"html" binding:"required"`
+}
+
+func MergeSlice(s1 []string, s2 []string) []string {
+	slice := make([]string, len(s1)+len(s2))
+	copy(slice, s1)
+	copy(slice[len(s1):], s2)
+	return slice
+}
+func containsKey(m, k interface{}) bool {
+	v := reflect.ValueOf(m).MapIndex(reflect.ValueOf(k))
+	return v != reflect.Value{}
+}
+
+func SendToMail(user, password, host, subject, body, mailtype, replyToAddress string, to, cc, bcc []string) error {
+	//hp := strings.Split(host, ":")
+	auth := smtp.PlainAuth("", user, password, host)
+	var content_type string
+	if mailtype == "html" {
+		content_type = "Content-Type: text/" + mailtype + "; charset=UTF-8"
+	} else {
+		content_type = "Content-Type: text/plain" + "; charset=UTF-8"
+	}
+
+	cc_address := strings.Join(cc, ";")
+	bcc_address := strings.Join(bcc, ";")
+	to_address := strings.Join(to, ";")
+	msg := []byte("To: " + to_address + "\r\nFrom: " + user + "\r\nSubject: " + subject + "\r\nReply-To: " + replyToAddress + "\r\nCc: " + cc_address + "\r\nBcc: " + bcc_address + "\r\n" + content_type + "\r\n\r\n" + body)
+
+	send_to := MergeSlice(to, cc)
+	send_to = MergeSlice(send_to, bcc)
+	err := smtp.SendMail(host, auth, user, send_to, msg)
+	return err
 }
 
 func CreateMail(context *gin.Context) {
-	//firstname := c.DefaultQuery("emailname", "Guest")
+	var mapAccountInfo map[string]string
+	byte_account_infos := os.Getenv("ACCOUNT_INFO")
+	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
+	if err != nil {
+		log.Fatal(err)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get ACCOUNT_INFO!"})
+		return
+	}
+
+	data, _ := ioutil.ReadAll(context.Request.Body)
+
+	var mailInfo CreateMailInfo
+	if json.Unmarshal(data, &mailInfo) != nil {
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not parse Info in body!"})
+		return
+	}
+
+	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
+		log.Fatal("####full struct is {}", mapAccountInfo, mailInfo.EmailName)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
+		return
+	}
+	pass := mapAccountInfo[mailInfo.EmailName]
+
+	mailhost := os.Getenv("MAIL_HOST")
+	mailtype := "txt"
+
+	fmt.Println("@@@@send email")
+	err = SendToMail(mailInfo.EmailName,
+		pass,
+		mailhost+":25",
+		mailInfo.Subject,
+		mailInfo.Text,
+		mailtype,
+		mailInfo.EmailName,
+		mailInfo.To,
+		mailInfo.Cc,
+		mailInfo.Bcc)
+	if err != nil {
+		fmt.Println("Send mail error!", err.Error())
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not send mail! because " + err.Error()})
+		return
+	} else {
+		fmt.Println("Send mail success!")
+	}
+
+	context.JSON(http.StatusOK, gin.H{"data": nil, "code": 0, "msg": "ok"})
 }
 
 func GetMails(context *gin.Context) {
@@ -73,6 +171,9 @@ func GetMails(context *gin.Context) {
 	mbox, err := c.Select("INBOX", false)
 	if err != nil {
 		log.Fatal(err)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can no select inbox!"})
+		return
 	}
 	log.Println("Flags for INBOX:", mbox.Flags)
 
@@ -167,5 +268,5 @@ func GetMails(context *gin.Context) {
 
 	log.Println("Done!")
 
-	context.JSON(http.StatusOK, gin.H{"data": maillist, "code": 0})
+	context.JSON(http.StatusOK, gin.H{"data": maillist, "code": 0, "msg": "ok"})
 }

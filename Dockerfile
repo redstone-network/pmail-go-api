@@ -13,6 +13,6 @@ RUN go mod download
 
 COPY ./server/*.go ./
 
-RUN go build -o /email
+RUN go build -o /pmail-api
 
-CMD [ "/email" ]
+CMD [ "/pmail-api" ]
