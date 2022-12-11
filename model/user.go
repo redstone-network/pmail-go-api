@@ -1,7 +1,7 @@
 package model
 
 // import (
-// 	"diary_api/database"
+// 	"pmail_api/database"
 // 	"html"
 // 	"strings"
 

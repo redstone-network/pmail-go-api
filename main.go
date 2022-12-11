@@ -1,9 +1,9 @@
 package main
 
 import (
-	"diary_api/controller"
 	"fmt"
 	"log"
+	"pmail_api/controller"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

@@ -1,4 +1,4 @@
-module diary_api
+module pmail_api
 
 go 1.18
 

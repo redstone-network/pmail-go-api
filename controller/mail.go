@@ -12,11 +12,12 @@ import (
 
 	"log"
 
-	"github.com/gin-gonic/gin"
-
 	"os"
 
+	"github.com/gin-gonic/gin"
+
 	"net/smtp"
+	"pmail_api/helper"
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
@@ -57,7 +58,8 @@ func containsKey(m, k interface{}) bool {
 
 func SendToMail(user, password, host, subject, body, mailtype, replyToAddress string, to, cc, bcc []string) error {
 	//hp := strings.Split(host, ":")
-	auth := smtp.PlainAuth("", user, password, host)
+	//auth := smtp.PlainAuth("", user, password, host)
+	auth := helper.LoginAuth(user, password)
 	var content_type string
 	if mailtype == "html" {
 		content_type = "Content-Type: text/" + mailtype + "; charset=UTF-8"
@@ -109,7 +111,7 @@ func CreateMail(context *gin.Context) {
 	fmt.Println("@@@@send email")
 	err = SendToMail(mailInfo.EmailName,
 		pass,
-		mailhost+":25",
+		mailhost+":587",
 		mailInfo.Subject,
 		mailInfo.Text,
 		mailtype,
