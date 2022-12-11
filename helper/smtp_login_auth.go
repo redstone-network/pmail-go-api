@@ -6,19 +6,19 @@ import (
 	"net/smtp"
 )
 
-type CustomLoginAuth struct {
+type loginAuth struct {
 	username, password string
 }
 
 func LoginAuth(username, password string) smtp.Auth {
-	return &CustomLoginAuth{username, password}
+	return &loginAuth{username, password}
 }
 
-func (a *CustomLoginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	return "LOGIN", []byte{}, nil
 }
 
-func (a *CustomLoginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	if more {
 		switch string(fromServer) {
 		case "Username:":
