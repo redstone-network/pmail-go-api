@@ -132,13 +132,31 @@ func CreateMail(context *gin.Context) {
 
 func GetMails(context *gin.Context) {
 	log.Println("##in GetMails")
+
+	var mapAccountInfo map[string]string
+	byte_account_infos := os.Getenv("ACCOUNT_INFO")
+	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
+	if err != nil {
+		log.Fatal(err)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get ACCOUNT_INFO!"})
+		return
+	}
+
 	imap.CharsetReader = charset.Reader
 
 	emailname := context.DefaultQuery("emailname", "test1")
 
 	mailhost := os.Getenv("MAIL_HOST")
 	mailport := os.Getenv("MAIL_PORT")
-	pass := os.Getenv("MAIL_PASS")
+
+	if !containsKey(mapAccountInfo, emailname) {
+		log.Fatal("####full struct is {}", mapAccountInfo, emailname)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get user info in database! " + emailname})
+		return
+	}
+	pass := mapAccountInfo[emailname]
 
 	c, err := client.DialTLS(mailhost+":"+mailport, nil)
 	if err != nil {
