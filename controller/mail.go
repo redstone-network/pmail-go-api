@@ -15,6 +15,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/net/html"
 
 	"net/smtp"
 	"pmail_api/helper"
@@ -26,12 +27,12 @@ import (
 )
 
 type Mail struct {
-	Subject string          `json:"subject"`
-	Body    string          `json:"body"`
-	From    []*mail.Address `json:"from"`
-	To      []*mail.Address `json:"to"`
-	Date    time.Time       `json:"data"`
-	//todo add raw mail data
+	Subject   string          `json:"subject"`
+	Body      string          `json:"body"`
+	From      []*mail.Address `json:"from"`
+	To        []*mail.Address `json:"to"`
+	Date      time.Time       `json:"date"`
+	TimeStamp uint64          `json:"timestampe"`
 }
 
 type CreateMailInfo struct {
@@ -43,6 +44,14 @@ type CreateMailInfo struct {
 	Subject   string   `form:"subject" json:"subject" binding:"required"`
 	Text      string   `form:"text" json:"text" binding:"required"`
 	Html      string   `form:"html" json:"html" binding:"required"`
+}
+
+type CreateMailWithHahInfo struct {
+	EmailName string   `form:"emailname" json:"emailname" binding:"required"`
+	From      string   `form:"from" json:"from" binding:"required"`
+	To        []string `form:"to" json:"to" binding:"required"`
+	Html      string   `form:"html" json:"html" binding:"required"`
+	Hash      string   `form:"hash" json:"hash" binding:"required"`
 }
 
 func MergeSlice(s1 []string, s2 []string) []string {
@@ -119,6 +128,79 @@ func CreateMail(context *gin.Context) {
 		mailInfo.To,
 		mailInfo.Cc,
 		mailInfo.Bcc)
+	if err != nil {
+		fmt.Println("Send mail error!", err.Error())
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not send mail! because " + err.Error()})
+		return
+	} else {
+		fmt.Println("Send mail success!")
+	}
+
+	context.JSON(http.StatusOK, gin.H{"data": nil, "code": 0, "msg": "ok"})
+}
+
+func CreateMailWithHash(context *gin.Context) {
+	var mapAccountInfo map[string]string
+	byte_account_infos := os.Getenv("ACCOUNT_INFO")
+	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
+	if err != nil {
+		log.Fatal(err)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get ACCOUNT_INFO!"})
+		return
+	}
+
+	data, _ := ioutil.ReadAll(context.Request.Body)
+
+	var mailInfo CreateMailWithHahInfo
+	if json.Unmarshal(data, &mailInfo) != nil {
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not parse Info in body!"})
+		return
+	}
+
+	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
+		log.Fatal("####full struct is {}", mapAccountInfo, mailInfo.EmailName)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
+		return
+	}
+	pass := mapAccountInfo[mailInfo.EmailName]
+
+	hash_store, err := helper.GetFile(mailInfo.Hash)
+	if err != nil {
+		log.Fatal(err)
+
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get mailinfo from hash!"})
+		return
+	}
+	var mailFromHash Mail
+	if json.Unmarshal(hash_store, &mailFromHash) != nil {
+		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not parse mail from hash store!"})
+		return
+	}
+
+	mailhost := os.Getenv("MAIL_HOST")
+
+	var mailtype string
+	_, err = html.Parse(strings.NewReader(mailFromHash.Body))
+	if err != nil {
+		mailtype = "html"
+	} else {
+		mailtype = "txt"
+	}
+
+	fmt.Println("@@@@send email")
+	err = SendToMail(mailInfo.EmailName,
+		pass,
+		mailhost+":587",
+		mailFromHash.Subject,
+		mailFromHash.Body,
+		mailtype,
+		mailInfo.EmailName,
+		mailInfo.To,
+		nil,
+		nil,
+	)
 	if err != nil {
 		fmt.Println("Send mail error!", err.Error())
 		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not send mail! because " + err.Error()})
@@ -236,6 +318,7 @@ func GetMails(context *gin.Context) {
 		var subject string
 		if date, err := header.Date(); err == nil {
 			mailInfo.Date = date
+			mailInfo.TimeStamp = uint64(date.UnixMilli())
 			//log.Println("Date:", date, reflect.TypeOf(date))
 		}
 		if from, err := header.AddressList("From"); err == nil {

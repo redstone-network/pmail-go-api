@@ -33,9 +33,8 @@ func serveApplication() {
 
 	apiRoutes := router.Group("/api")
 	apiRoutes.POST("/mails/create", controller.CreateMail)
+	apiRoutes.POST("/mails/create_with_hash", controller.CreateMailWithHash)
 	apiRoutes.GET("/mails/list", controller.GetMails)
-
-	// apiRoutes.POST("/storage/upload", controller.Upload)
 
 	router.Run(":8888")
 	fmt.Println("Server running on port 8888")
