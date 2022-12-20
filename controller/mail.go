@@ -68,6 +68,7 @@ func containsKey(m, k interface{}) bool {
 func SendToMail(user, password, host, subject, body, mailtype, replyToAddress string, to, cc, bcc []string) error {
 	//hp := strings.Split(host, ":")
 	//auth := smtp.PlainAuth("", user, password, host)
+	// fmt.Println("----- Sending to mail...")
 	auth := helper.LoginAuth(user, password)
 	var content_type string
 	if mailtype == "html" {
@@ -83,7 +84,15 @@ func SendToMail(user, password, host, subject, body, mailtype, replyToAddress st
 
 	send_to := MergeSlice(to, cc)
 	send_to = MergeSlice(send_to, bcc)
+
+	// fmt.Println("host",host)
+	// fmt.Println("auth",auth)
+	// fmt.Println("-----user",user)
+	// fmt.Println("-----to",send_to)
+	// fmt.Println("msg",msg)
+
 	err := smtp.SendMail(host, auth, user, send_to, msg)
+	// fmt.Println("smpt failed:",err)
 	return err
 }
 
@@ -140,42 +149,51 @@ func CreateMail(context *gin.Context) {
 }
 
 func CreateMailWithHash(context *gin.Context) {
+
+	// fmt.Println("-----Creating a web2 mail...")
+
 	var mapAccountInfo map[string]string
 	byte_account_infos := os.Getenv("ACCOUNT_INFO")
 	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
 	if err != nil {
 		log.Fatal(err)
 
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get ACCOUNT_INFO!"})
+		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get ACCOUNT_INFO!"})
 		return
 	}
 
 	data, _ := ioutil.ReadAll(context.Request.Body)
 
+	// fmt.Println("-----Get post body:",data)
+
 	var mailInfo CreateMailWithHahInfo
 	if json.Unmarshal(data, &mailInfo) != nil {
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not parse Info in body!"})
+		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not parse Info in body!"})
 		return
 	}
 
-	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
-		log.Fatal("####full struct is {}", mapAccountInfo, mailInfo.EmailName)
 
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
+
+	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
+		log.Fatal("####full struct is {}: ", mapAccountInfo, mailInfo.EmailName)
+
+		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
 		return
 	}
 	pass := mapAccountInfo[mailInfo.EmailName]
+
+	// fmt.Println("-----Get mail info:",mailInfo)
 
 	hash_store, err := helper.GetFile(mailInfo.Hash)
 	if err != nil {
 		log.Fatal(err)
 
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not get mailinfo from hash!"})
+		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get mailinfo from hash!"})
 		return
 	}
 	var mailFromHash Mail
 	if json.Unmarshal(hash_store, &mailFromHash) != nil {
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not parse mail from hash store!"})
+		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not parse mail from hash store!"})
 		return
 	}
 
@@ -188,6 +206,8 @@ func CreateMailWithHash(context *gin.Context) {
 	} else {
 		mailtype = "txt"
 	}
+
+	// fmt.Println("-----user,password",mailInfo.EmailName,pass)
 
 	fmt.Println("@@@@send email")
 	err = SendToMail(mailInfo.EmailName,
@@ -203,13 +223,13 @@ func CreateMailWithHash(context *gin.Context) {
 	)
 	if err != nil {
 		fmt.Println("Send mail error!", err.Error())
-		context.JSON(http.StatusOK, gin.H{"data": nil, "code": 1, "msg": "can not send mail! because " + err.Error()})
+		context.JSON(http.StatusOK, gin.H{"data":"", "code": 1, "msg": "can not send mail! because " + err.Error()})
 		return
 	} else {
 		fmt.Println("Send mail success!")
 	}
 
-	context.JSON(http.StatusOK, gin.H{"data": nil, "code": 0, "msg": "ok"})
+	context.JSON(http.StatusOK, gin.H{"data": "success", "code": 0, "msg": "ok"})
 }
 
 func GetMails(context *gin.Context) {
@@ -242,7 +262,7 @@ func GetMails(context *gin.Context) {
 
 	c, err := client.DialTLS(mailhost+":"+mailport, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("client dial tls failed",err)
 	}
 	log.Println("Connected")
 	defer c.Logout()
