@@ -35,6 +35,15 @@ type Mail struct {
 	TimeStamp uint64          `json:"timestampe"`
 }
 
+type CreateMailRequest struct {
+	Subject   string          `json:"subject"`
+	Body      string          `json:"body"`
+	From      []*mail.Address `json:"from"`
+	To        []*mail.Address `json:"to"`
+	Date      string          `json:"date"`
+	TimeStamp uint64          `json:"timestampe"`
+}
+
 type CreateMailInfo struct {
 	EmailName string   `form:"emailname" json:"emailname" binding:"required"`
 	From      string   `form:"from" json:"from" binding:"required"`
@@ -157,7 +166,6 @@ func CreateMailWithHash(context *gin.Context) {
 	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
 	if err != nil {
 		log.Println(err)
-
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get ACCOUNT_INFO!"})
 		return
 	}
@@ -168,13 +176,13 @@ func CreateMailWithHash(context *gin.Context) {
 
 	var mailInfo CreateMailWithHahInfo
 	if json.Unmarshal(data, &mailInfo) != nil {
+		log.Println(err)
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not parse Info in body!"})
 		return
 	}
 
 	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
 		log.Println("####full struct is {}: ", mapAccountInfo, mailInfo.EmailName)
-
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
 		return
 	}
@@ -189,8 +197,10 @@ func CreateMailWithHash(context *gin.Context) {
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get mailinfo from hash!"})
 		return
 	}
-	var mailFromHash Mail
-	if json.Unmarshal(hash_store, &mailFromHash) != nil {
+	var mailFromHash CreateMailRequest
+	err = json.Unmarshal(hash_store, &mailFromHash)
+	if err != nil {
+		log.Println("##### can not parse mail from hash store!", err)
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not parse mail from hash store!"})
 		return
 	}
