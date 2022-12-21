@@ -101,7 +101,7 @@ func CreateMail(context *gin.Context) {
 	byte_account_infos := os.Getenv("ACCOUNT_INFO")
 	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get ACCOUNT_INFO!"})
 		return
@@ -116,7 +116,7 @@ func CreateMail(context *gin.Context) {
 	}
 
 	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
-		log.Fatal("####full struct is {}", mapAccountInfo, mailInfo.EmailName)
+		log.Println("####full struct is {}", mapAccountInfo, mailInfo.EmailName)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
 		return
@@ -156,7 +156,7 @@ func CreateMailWithHash(context *gin.Context) {
 	byte_account_infos := os.Getenv("ACCOUNT_INFO")
 	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get ACCOUNT_INFO!"})
 		return
@@ -173,7 +173,7 @@ func CreateMailWithHash(context *gin.Context) {
 	}
 
 	if !containsKey(mapAccountInfo, mailInfo.EmailName) {
-		log.Fatal("####full struct is {}: ", mapAccountInfo, mailInfo.EmailName)
+		log.Println("####full struct is {}: ", mapAccountInfo, mailInfo.EmailName)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get user info in database! " + mailInfo.EmailName})
 		return
@@ -184,7 +184,7 @@ func CreateMailWithHash(context *gin.Context) {
 
 	hash_store, err := helper.GetFile(mailInfo.Hash)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get mailinfo from hash!"})
 		return
@@ -237,7 +237,7 @@ func GetMails(context *gin.Context) {
 	byte_account_infos := os.Getenv("ACCOUNT_INFO")
 	err := json.Unmarshal([]byte(byte_account_infos), &mapAccountInfo)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get ACCOUNT_INFO!"})
 		return
@@ -251,7 +251,7 @@ func GetMails(context *gin.Context) {
 	mailport := os.Getenv("MAIL_PORT")
 
 	if !containsKey(mapAccountInfo, emailname) {
-		log.Fatal("####full struct is {}", mapAccountInfo, emailname)
+		log.Println("####full struct is {}", mapAccountInfo, emailname)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can not get user info in database! " + emailname})
 		return
@@ -260,14 +260,14 @@ func GetMails(context *gin.Context) {
 
 	c, err := client.DialTLS(mailhost+":"+mailport, nil)
 	if err != nil {
-		log.Fatal("client dial tls failed", err)
+		log.Println("client dial tls failed", err)
 	}
 	log.Println("Connected")
 	defer c.Logout()
 
 	// Login
 	if err := c.Login(emailname, pass); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	log.Println("Logged in")
 
@@ -284,13 +284,13 @@ func GetMails(context *gin.Context) {
 	}
 
 	if err := <-done; err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	// Select INBOX
 	mbox, err := c.Select("INBOX", false)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 
 		context.JSON(http.StatusOK, gin.H{"data": "", "code": 1, "msg": "can no select inbox!"})
 		return
@@ -325,11 +325,11 @@ func GetMails(context *gin.Context) {
 		var mailInfo Mail
 		r := msg.GetBody(section)
 		if r == nil {
-			log.Fatal("get body from server fail!")
+			log.Println("get body from server fail!")
 		}
 		mr, err := mail.CreateReader(r)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		header := mr.Header
@@ -358,7 +358,7 @@ func GetMails(context *gin.Context) {
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				log.Fatal("NextPart:err ", err)
+				log.Println("NextPart:err ", err)
 			}
 
 			switch h := p.Header.(type) {
@@ -384,7 +384,7 @@ func GetMails(context *gin.Context) {
 	}
 
 	if err := <-done; err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	log.Println("Done!")
