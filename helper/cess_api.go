@@ -5,7 +5,7 @@ import "os"
 func GetFile(hash string) ([]byte, error) {
 
 	ossApiHost := os.Getenv("OSS_API_HOST")
-	url := ossApiHost + "/api/storage/" + hash
+	url := ossApiHost + "/api/storage/raw/" + hash
 
 	headers := make(map[string]string)
 	res, err := GetWithHeader(url, headers)
