@@ -74,6 +74,7 @@ func containsKey(m, k interface{}) bool {
 	return v != reflect.Value{}
 }
 
+// send mail to mail serve
 func SendToMail(user, password, host, subject, body, mailtype, replyToAddress string, to, cc, bcc []string) error {
 	//hp := strings.Split(host, ":")
 	//auth := smtp.PlainAuth("", user, password, host)
@@ -105,6 +106,7 @@ func SendToMail(user, password, host, subject, body, mailtype, replyToAddress st
 	return err
 }
 
+// create mail by from, to, subject, body
 func CreateMail(context *gin.Context) {
 	var mapAccountInfo map[string]string
 	byte_account_infos := os.Getenv("ACCOUNT_INFO")
@@ -157,6 +159,7 @@ func CreateMail(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"data": "", "code": 0, "msg": "ok"})
 }
 
+// create mail by from, to, mail store hash
 func CreateMailWithHash(context *gin.Context) {
 
 	// fmt.Println("-----Creating a web2 mail...")
@@ -240,6 +243,7 @@ func CreateMailWithHash(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"data": "success", "code": 0, "msg": "ok"})
 }
 
+// get mail list by account
 func GetMails(context *gin.Context) {
 	log.Println("##in GetMails")
 
